@@ -1,5 +1,6 @@
 <template>
   <div class="user_reference_input_component">
+    <h2>Current search: {{current_search}}</h2>
     <h1>User Reference</h1><br>
     <textarea v-model="input_text" rows="5" cols="50" ref="text_element" placeholder="Text..." @input="inputText($event)"></textarea>
     <!--<div v-html="input_text"></div>-->
@@ -42,7 +43,7 @@
       searchList (stringToSearch) {
         console.log('SEARCH', stringToSearch)
         for (const user of users) {
-          if (user.first_name.toLowerCase().includes(stringToSearch) || user.last_name.toLowerCase().includes(stringToSearch) || user.nick_name.toLowerCase().includes(stringToSearch)) {
+          if ((user.first_name.toLowerCase().includes(stringToSearch) || user.last_name.toLowerCase().includes(stringToSearch) || user.nick_name.toLowerCase().includes(stringToSearch)) && !this.references.some(element => element.user_ref === user.nick_name)) {
             user.hidden = false
           } else {
             user.hidden = true
@@ -51,11 +52,11 @@
       },
       inputText (event) {
         console.log(event)
-        if (event.data === '@') {
-          const cursorPosition = this.getInputCursorPosition()
-          console.log(cursorPosition)
-          this.show_list = true
+        const cursorPosition = this.getInputCursorPosition()
+        const supprCharacter = event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward' || event.inputType === 'deletedByCut'
 
+        if (event.data === '@' && this.input_text.charAt(cursorPosition - 2) === ' ') {
+          this.show_list = true
           return
         }
 
@@ -63,10 +64,33 @@
           if (event.data) {
             this.current_search += event.data
           }
+          if (supprCharacter) {
+            this.current_search = this.current_search.substring(0, this.current_search.length - 1)
+          }
           this.searchList(this.current_search)
 
           if (event.data === ' ') {
             this.toggleSearchOff()
+          }
+        }
+
+        if (this.input_text.indexOf('@') > -1) {
+          let isInRef = false
+          if (supprCharacter) {
+            for (let i = cursorPosition; i > 0; i--) {
+              if (this.input_text.charAt(i) === "@") {
+                isInRef = true
+                break
+              } else if (this.input_text.charAt(i) === " ") {
+                isInRef = false
+                break
+              }
+            }
+            console.log(isInRef)
+
+            if (isInRef) {
+              this.show_list = true
+            }
           }
         }
       },
@@ -93,17 +117,6 @@
         console.log(this.current_search)
       }
     }
-    // watch: {
-    //   input_text () {
-    //     const atIndex = this.input_text.indexOf('@')
-    //     if (atIndex > -1) {
-    //       this.show_list = true
-    //       this.searchList(this.input_text.substring(atIndex + 1))
-    //     } else {
-    //       this.show_list = false
-    //     }
-    //   }
-    // }
   }
 </script>
 
