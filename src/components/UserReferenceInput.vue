@@ -27,7 +27,9 @@
         show_list: false,
         users: users,
         references: [],
-        current_search: ''
+        current_search: '',
+        in_ref_mode: false,
+        in_edit_mode: false
       }
     },
     methods: {
@@ -43,7 +45,7 @@
       searchList (stringToSearch) {
         console.log('SEARCH', stringToSearch)
         for (const user of users) {
-          if ((user.first_name.toLowerCase().includes(stringToSearch) || user.last_name.toLowerCase().includes(stringToSearch) || user.nick_name.toLowerCase().includes(stringToSearch)) && !this.references.some(element => element.user_ref === user.nick_name)) {
+          if ((user.first_name.toLowerCase().includes(stringToSearch) || user.last_name.toLowerCase().includes(stringToSearch) || user.nick_name.toLowerCase().includes(stringToSearch)) /*&& !this.references.some(element => element.user_ref === user.nick_name)*/) {
             user.hidden = false
           } else {
             user.hidden = true
@@ -56,42 +58,38 @@
         const supprCharacter = event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward' || event.inputType === 'deletedByCut'
 
         if (event.data === '@' && this.input_text.charAt(cursorPosition - 2) === ' ') {
-          this.show_list = true
+          this.in_ref_mode = true
           return
+        } else if (event.data === ' ' && (this.in_ref_mode || this.in_edit_mode)) {
+          this.in_ref_mode = false
+          this.in_edit_mode = false
+        } else if (this.input_text.indexOf('@') > -1 && !this.in_ref_mode) {
+          for (let i = cursorPosition; i > 0; i--) {
+            if (this.input_text.charAt(i) === "@" && this.input_text.charAt(i - 1) === " ") {
+              this.in_edit_mode = true
+              this.current_search = this.input_text.substring(i + 1, (this.input_text.indexOf(" ", i) > -1 ? this.input_text.indexOf(" ", i) : this.input_text.length) + 1)
+              break
+            } else if (this.input_text.charAt(i) === " ") {
+              this.in_ref_mode = false
+              this.in_edit_mode = false
+              break
+            }
+          }
+        } else {
+          this.in_ref_mode = false
+          this.in_edit_mode = false
         }
 
-        if (this.show_list) {
-          if (event.data) {
+        if (this.in_ref_mode || this.in_edit_mode) {
+          if (this.in_ref_mode && event.data) {
             this.current_search += event.data
           }
+
           if (supprCharacter) {
-            this.current_search = this.current_search.substring(0, this.current_search.length - 1)
+            this.current_search = this.current_search.slice(0, -1)
           }
+
           this.searchList(this.current_search)
-
-          if (event.data === ' ') {
-            this.toggleSearchOff()
-          }
-        }
-
-        if (this.input_text.indexOf('@') > -1) {
-          let isInRef = false
-          if (supprCharacter) {
-            for (let i = cursorPosition; i > 0; i--) {
-              if (this.input_text.charAt(i) === "@") {
-                isInRef = true
-                break
-              } else if (this.input_text.charAt(i) === " ") {
-                isInRef = false
-                break
-              }
-            }
-            console.log(isInRef)
-
-            if (isInRef) {
-              this.show_list = true
-            }
-          }
         }
       },
       addUserToReference (user) {
@@ -109,12 +107,27 @@
           user_fullname: user.first_name + user.last_name
         })
 
-        this.toggleSearchOff()
+        this.in_ref_mode = false
+        this.in_edit_mode = false
       }
     },
     watch: {
       current_search () {
         console.log(this.current_search)
+      },
+      in_ref_mode () {
+        if (this.in_ref_mode) {
+          this.show_list = true
+        } else {
+          this.toggleSearchOff()
+        }
+      },
+      in_edit_mode () {
+        if (this.in_edit_mode) {
+          this.show_list = true
+        } else {
+          this.toggleSearchOff()
+        }
       }
     }
   }
