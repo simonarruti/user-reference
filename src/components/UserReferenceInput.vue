@@ -36,6 +36,31 @@
       getInputCursorPosition () {
         return this.$refs.text_element.selectionStart
       },
+      getSearchString (event, currentSearch) {
+        const supprCharacter = event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward' || event.inputType === 'deletedByCut'
+
+        if (!supprCharacter) {
+          currentSearch += event.data
+        } else {
+          currentSearch = currentSearch.slice(0, -1)
+        }
+        this.current_search = currentSearch
+
+        return currentSearch
+      },
+      getEditSearchString (cursorPosition) {
+        let search = ''
+
+        for (let i = cursorPosition; i > 0; i--) {
+          if (this.input_text.charAt(i) === "@" && this.input_text.charAt(i - 1) === " ") {
+            search = this.input_text.substring(i + 1, (this.input_text.indexOf(" ", i) > -1 ? this.input_text.indexOf(" ", i) : this.input_text.length))
+            break
+          }
+        }
+        this.current_search = search
+
+        return search
+      },
       toggleSearchOff () {
         this.show_list = false
         this.current_search = ''
@@ -57,43 +82,56 @@
         const cursorPosition = this.getInputCursorPosition()
         const supprCharacter = event.inputType === 'deleteContentBackward' || event.inputType === 'deleteContentForward' || event.inputType === 'deletedByCut'
 
-        if (event.data === '@' && this.input_text.charAt(cursorPosition - 2) === ' ') {
-          this.in_ref_mode = true
-          return
-        } else if (event.data === ' ' && (this.in_ref_mode || this.in_edit_mode)) {
-          this.in_ref_mode = false
-          this.in_edit_mode = false
-        } else if (this.input_text.indexOf('@') > -1 && !this.in_ref_mode) {
-          for (let i = cursorPosition; i > 0; i--) {
-            if (this.input_text.charAt(i) === "@" && this.input_text.charAt(i - 1) === " ") {
-              this.in_edit_mode = true
-              this.current_search = this.input_text.substring(i + 1, (this.input_text.indexOf(" ", i) > -1 ? this.input_text.indexOf(" ", i) : this.input_text.length) + 1)
-              break
-            } else if (this.input_text.charAt(i) === " ") {
+        if (this.in_ref_mode) {
+          if (event.data === ' ') {
+            this.in_ref_mode = false
+            return
+          } else if (supprCharacter) {
+            if (this.input_text.indexOf(' ', cursorPosition - 1) > -1) {
               this.in_ref_mode = false
-              this.in_edit_mode = false
-              break
+              return
             }
           }
-        } else {
-          this.in_ref_mode = false
-          this.in_edit_mode = false
+
+          this.searchList(this.getSearchString(event, this.current_search))
         }
-
-        if (this.in_ref_mode || this.in_edit_mode) {
-          if (this.in_ref_mode && event.data) {
-            this.current_search += event.data
+        else if (this.in_edit_mode) {
+          if (event.data === ' ') {
+            this.in_edit_mode = false
+            return
+          } else if (supprCharacter) {
+            if (this.input_text.indexOf('@', cursorPosition - 1) > -1) {
+              this.in_edit_mode = false
+              return
+            }
           }
 
-          if (supprCharacter) {
-            this.current_search = this.current_search.slice(0, -1)
+          this.searchList(this.getEditSearchString(cursorPosition))
+        }
+        else {
+          if (this.input_text.indexOf('@') > -1) {
+            if (event.data === '@') {
+              this.in_ref_mode = true
+              return
+            }
+            for (let i = cursorPosition; i > 0; i--) {
+              if (this.input_text.charAt(i) === "@" && this.input_text.charAt(i - 1) === " ") {
+                this.in_edit_mode = true
+                this.searchList(this.getEditSearchString(cursorPosition))
+                return
+              }
+              else if (this.input_text.charAt(i) === " ") {
+                return
+              }
+            }
+          } else {
+            if (event.data === '@') {
+              this.in_ref_mode = true
+            }
           }
-
-          this.searchList(this.current_search)
         }
       },
       addUserToReference (user) {
-        // const cursorPosition = this.getInputCursorPosition()
         const stringToReplace = this.input_text.substring(0, this.input_text.lastIndexOf('@') + 1)
         const stringReady = stringToReplace + user.nick_name + ' '
         console.log('READY', stringToReplace)
